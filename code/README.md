@@ -2,7 +2,7 @@
 version control: 2018/02/03
 
 ## Discription
-src: contains the pages of GraRep, DeepWalk, node2vec, LINE, SDNE </br>
+src: contains the pages of GraRep, TADW, DeepWalk, node2vec, LINE, SDNE </br>
 data: input datasets which including bolgCatalog, cora, wiki </br>
 output: output results </br>
 
