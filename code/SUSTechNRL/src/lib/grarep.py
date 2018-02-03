@@ -47,6 +47,7 @@ class GraRep(object):
     
     def train(self):
         # self.adj = self.getAdjMat()
+        self.g.adjMat = np.matrix(self.g.adjMat)
         self.node_size = self.g.adjMat.shape[0]
         self.Ak = np.matrix(np.identity(self.node_size))
         self.RepMat = np.zeros((self.node_size, self.dim*self.Kstep))
