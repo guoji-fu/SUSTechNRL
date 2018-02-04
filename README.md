@@ -1,6 +1,6 @@
 # SUSTechNRL
 Network Representation Learning Group in SUSTech </br>
-contributers: Guoji Fu, Chengbin Hou
+contributors: Guoji Fu, Chengbin Hou
 
 ## materials
 
