@@ -70,7 +70,7 @@ def parse_args():
                         action='store_true',
                         help='no early stop when training LINE')
     
-    ## parameters for deepwalk and note2vec
+    ## parameters for deepwalk and node2vec
     parser.add_argument('--walk-length',
                         default=80,
                         type=int,
