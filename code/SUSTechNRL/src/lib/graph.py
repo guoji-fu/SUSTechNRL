@@ -110,4 +110,4 @@ class Graph(object):
         for edge in self.G.edges():
             self.adjMat[look_up[edge[0]]][look_up[edge[1]]] = 1.0
             self.adjMat[look_up[edge[1]]][look_up[edge[0]]] = 1.0
-        self.adjMat = np.matrix(self.adjMat/np.sum(self.adjMat, axis=1))
+        # self.adjMat = np.matrix(self.adjMat/np.sum(self.adjMat, axis=1))

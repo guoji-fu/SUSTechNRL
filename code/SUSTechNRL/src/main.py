@@ -8,7 +8,7 @@ from lib.classify import Classifier, read_node_label
 from lib.grarep import GraRep
 from lib import line
 from lib import node2vec
-from lib.sdne import sdne
+from lib import autoencoder
 
 import time
 
@@ -19,7 +19,7 @@ def parse_args():
                         default='data/cora/cora_edgelist.txt',
                         help='input graph file')
     parser.add_argument('--output',
-                        default='output/cora_deepwalk_embedding.txt',
+                        default='output/cora_ae_embedding.txt',
                         help='output representation file')
     parser.add_argument('--label-file',
                         default='data/cora/cora_labels.txt',
@@ -47,8 +47,8 @@ def parse_args():
                         help='the ratio of training data in the classification')
 
     parser.add_argument('--method',
-                        default='deepwalk',
-                        choices=['grarep', 'line', 'deepwalk', 'node2vec', 'sdne'],
+                        default='autoencoder',
+                        choices=['grarep', 'line', 'deepwalk', 'node2vec', 'autoencoder'],
                         help='the learning method')
 
     ## parameters for GraRep
@@ -94,11 +94,11 @@ def parse_args():
                         default=1.0,
                         type=float)
 
-    ## parameters for SDNE
+    ## parameters for autoencoder
     parser.add_argument('--struct',
-                        default=[None, 1000, None])
+                        default=[None, 100, 100, None])
     parser.add_argument('--alpha',
-                        default=500)
+                        default=1)
     parser.add_argument('--gamma',
                         default=1)
     parser.add_argument('--reg',
@@ -106,27 +106,9 @@ def parse_args():
     parser.add_argument('--beta',
                         default=10)
     parser.add_argument('--batch-size',
-                        default=64)
-    parser.add_argument('--epochs-limit',
-                        default=1)
+                        default=128)
     parser.add_argument('--learning-rate',
-                        default=0.01)
-    parser.add_argument('--display',
-                        default=1)
-    parser.add_argument('--DBN-init',
-                        default=True)
-    parser.add_argument('--dbn-epochs',
-                        default=20)
-    parser.add_argument('--dbn-batch-size',
-                        default=64)
-    parser.add_argument('--dbn-learning-rate',
-                        default=0.1)
-    parser.add_argument('--sparse-dot',
-                        default=False)
-    parser.add_argument('--negative-ratio',
-                        default=0,
-                        type=int,
-                        help='the negative ratio of LINE or SDNE')
+                        default=0.001)
     
     args = parser.parse_args()
 
@@ -178,25 +160,17 @@ def buildModel(args, g):
                                     p=args.p,
                                     q=args.q,
                                     window=args.window_size)
-    elif args.method == 'sdne':
-        model = sdne.SDNE(graph=g,
-                            struct=args.struct,
-                            alpha=args.alpha,
-                            gamma=args.gamma,
-                            reg=args.reg,
-                            beta=args.beta,
-                            batch_size=args.batch_size,
-                            epochs_limit=args.epochs_limit,
-                            learning_rate=args.learning_rate,
-                            display=args.display,
-                            DBN_init=args.DBN_init,
-                            dbn_epochs=args.dbn_epochs,
-                            dbn_batch_size=args.dbn_batch_size,
-                            dbn_learning_rate=args.dbn_learning_rate,
-                            sparse_dot=args.sparse_dot,
-                            negative_ratio=args.negative_ratio,
-                            dim = args.representation_size,
-                            output_file=args.output)
+    elif args.method == 'autoencoder':
+        model = autoencoder.Autoencoder(graph=g,
+                                        struct=args.struct,
+                                        alpha=args.alpha,
+                                        gamma=args.gamma,
+                                        reg=args.reg,
+                                        beta=args.beta,
+                                        rep_size=args.representation_size,
+                                        batch_size=args.batch_size,
+                                        learning_rate=args.learning_rate)
+        model.train(g.adjMat)
     
     return model
 
