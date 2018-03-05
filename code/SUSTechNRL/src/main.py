@@ -16,13 +16,13 @@ def parse_args():
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter,
                             conflict_handler='resolve')
     parser.add_argument('--input',
-                        default='data/cora/cora_edgelist.txt',
+                        default='data/blogCatalog/bc_edgelist.txt',
                         help='input graph file')
     parser.add_argument('--output',
-                        default='output/cora_ae_embedding.txt',
+                        default='output/bc_dw_embedding.txt',
                         help='output representation file')
     parser.add_argument('--label-file',
-                        default='data/cora/cora_labels.txt',
+                        default='data/blogCatalog/bc_labels.txt',
                         help='the file of node label')
     parser.add_argument('--feature-file',
                         default='',

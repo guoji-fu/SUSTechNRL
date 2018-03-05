@@ -10,7 +10,7 @@ class Autoencoder:
                  reg=1,
                  beta=10,
                  rep_size=128, 
-                 epochs=1000, 
+                 epochs=500, 
                  batch_size=256,
                  learning_rate=0.001):
         self.g = graph
