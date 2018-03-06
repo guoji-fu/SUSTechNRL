@@ -6,9 +6,12 @@ from lib.graph import *
 from lib.classify import Classifier, read_node_label
 
 from lib.grarep import GraRep
-from lib import line
+from lib import tadw
 from lib import node2vec
+from lib import line
+from lib.sdne import sdne2
 from lib import autoencoder
+from lib import dngr
 
 import time
 
@@ -16,16 +19,16 @@ def parse_args():
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter,
                             conflict_handler='resolve')
     parser.add_argument('--input',
-                        default='data/blogCatalog/bc_edgelist.txt',
+                        default='data/cora/cora_edgelist.txt',
                         help='input graph file')
     parser.add_argument('--output',
-                        default='output/bc_dw_embedding.txt',
+                        default='output/cora_dngr_embedding.txt',
                         help='output representation file')
     parser.add_argument('--label-file',
-                        default='data/blogCatalog/bc_labels.txt',
+                        default='data/cora/cora_labels.txt',
                         help='the file of node label')
     parser.add_argument('--feature-file',
-                        default='',
+                        default='data/cora/cora.features',
                         help='the file of node features')
     parser.add_argument('--graph-format',
                         default='edgelist',
@@ -47,8 +50,8 @@ def parse_args():
                         help='the ratio of training data in the classification')
 
     parser.add_argument('--method',
-                        default='autoencoder',
-                        choices=['grarep', 'line', 'deepwalk', 'node2vec', 'autoencoder'],
+                        default='dngr',
+                        choices=['grarep', 'tadw', 'line', 'deepwalk', 'node2vec', 'sdne', 'autoencoder', 'dngr'],
                         help='the learning method')
 
     ## parameters for GraRep
@@ -57,20 +60,13 @@ def parse_args():
                         type=int,
                         help='use k-step transition probability matrix')
 
-    ## parameters for LINE
-    parser.add_argument('--order',
-                        default=3,
-                        type=int,
-                        help='choose the order of LINE, 1 means first order, 2 means second order, 3 means first order + second order')
-    parser.add_argument('--epochs',
-                        default=5,
-                        type=int,
-                        help='the training epochs of LINE or GCN')
-    parser.add_argument('--no-auto-stop',
-                        action='store_true',
-                        help='no early stop when training LINE')
+    ## parameters for tadw
+    parser.add_argument('--lamb',
+                        default=0.2,
+                        type=float,
+                        help='lambda is a hyperparameter in TADW')
     
-    ## parameters for deepwalk and node2vec
+    ## parameters for deepwalk and note2vec
     parser.add_argument('--walk-length',
                         default=80,
                         type=int,
@@ -94,11 +90,24 @@ def parse_args():
                         default=1.0,
                         type=float)
 
-    ## parameters for autoencoder
+    ## parameters for LINE
+    parser.add_argument('--order',
+                        default=3,
+                        type=int,
+                        help='choose the order of LINE, 1 means first order, 2 means second order, 3 means first order + second order')
+    parser.add_argument('--epochs',
+                        default=5,
+                        type=int,
+                        help='the training epochs of LINE or GCN')
+    parser.add_argument('--no-auto-stop',
+                        action='store_true',
+                        help='no early stop when training LINE')
+
+    ## parameters for SDNE
     parser.add_argument('--struct',
-                        default=[None, 100, 100, None])
+                        default=[None, 1000, None])
     parser.add_argument('--alpha',
-                        default=1)
+                        default=500)
     parser.add_argument('--gamma',
                         default=1)
     parser.add_argument('--reg',
@@ -106,9 +115,37 @@ def parse_args():
     parser.add_argument('--beta',
                         default=10)
     parser.add_argument('--batch-size',
-                        default=128)
+                        default=64)
+    parser.add_argument('--epochs-limit',
+                        default=1)
     parser.add_argument('--learning-rate',
-                        default=0.001)
+                        default=0.01)
+    parser.add_argument('--display',
+                        default=1)
+    parser.add_argument('--DBN-init',
+                        default=True)
+    parser.add_argument('--dbn-epochs',
+                        default=20)
+    parser.add_argument('--dbn-batch-size',
+                        default=64)
+    parser.add_argument('--dbn-learning-rate',
+                        default=0.1)
+    parser.add_argument('--sparse-dot',
+                        default=False)
+    parser.add_argument('--negative-ratio',
+                        default=0,
+                        type=int,
+                        help='the negative ratio of LINE or SDNE')
+    
+    ## parameters for DNGR
+    parser.add_argument('--random-surfing-steps',
+                        default=10,
+                        type=int,
+                        help='number of steps for random surfing')
+    parser.add_argument('--random-surfing-rate',
+                        default=0.98,
+                        type=float,
+                        help='alpha random surfing')
     
     args = parser.parse_args()
 
@@ -130,19 +167,14 @@ def buildModel(args, g):
         model = GraRep(graph=g,
                         Kstep=args.Kstep,
                         dim=args.representation_size)
-    elif args.method == 'line':
-        if args.label_file and not args.no_auto_stop:
-            model = line.LINE(graph=g,
-                                epoch=args.epochs,
-                                rep_size=args.representation_size,
-                                order=args.order,
-                                label_file=args.label_file,
-                                clf_ratio=args.clf_ratio)
-        else:
-            model = line.LINE(graph=g,
-                                epoch=args.epochs,
-                                rep_size=args.representation_size,
-                                order=args.order)
+    elif args.method == 'tadw':
+        assert args.label_file != ''
+        assert args.feature_file != ''
+        g.read_node_label(args.label_file)
+        g.read_node_features(args.feature_file)
+        model = tadw.TADW(graph=g,
+                            dim=args.representation_size,
+                            lamb=args.lamb)
     elif args.method == 'deepwalk':
         model = node2vec.Node2vec(graph=g,
                                     path_length=args.walk_length,
@@ -160,17 +192,46 @@ def buildModel(args, g):
                                     p=args.p,
                                     q=args.q,
                                     window=args.window_size)
+    elif args.method == 'line':
+        if args.label_file and not args.no_auto_stop:
+            model = line.LINE(graph=g,
+                                epoch=args.epochs,
+                                rep_size=args.representation_size,
+                                order=args.order,
+                                label_file=args.label_file,
+                                clf_ratio=args.clf_ratio)
+        else:
+            model = line.LINE(graph=g,
+                                epoch=args.epochs,
+                                rep_size=args.representation_size,
+                                order=args.order)
+    elif args.method == 'sdne':
+        model = sdne2.SDNE(graph=g,
+                            struct=args.struct,
+                            alpha=args.alpha,
+                            gamma=args.gamma,
+                            reg=args.reg,
+                            beta=args.beta,
+                            batch_size=args.batch_size,
+                            epochs_limit=args.epochs_limit,
+                            learning_rate=args.learning_rate,
+                            display=args.display,
+                            DBN_init=args.DBN_init,
+                            dbn_epochs=args.dbn_epochs,
+                            dbn_batch_size=args.dbn_batch_size,
+                            dbn_learning_rate=args.dbn_learning_rate,
+                            sparse_dot=args.sparse_dot,
+                            negative_ratio=args.negative_ratio,
+                            dim = args.representation_size,
+                            output_file=args.output)
     elif args.method == 'autoencoder':
-        model = autoencoder.Autoencoder(graph=g,
-                                        struct=args.struct,
-                                        alpha=args.alpha,
-                                        gamma=args.gamma,
-                                        reg=args.reg,
-                                        beta=args.beta,
-                                        rep_size=args.representation_size,
-                                        batch_size=args.batch_size,
-                                        learning_rate=args.learning_rate)
+        model = autoencoder.Autoencoder(graph=g)
         model.train(g.adjMat)
+    elif args.method == 'dngr':
+        model = dngr.DNGR(graph=g,
+                          max_step=args.random_surfing_steps,
+                          alpha=args.random_surfing_rate)
+        model.train()
     
     return model
 
