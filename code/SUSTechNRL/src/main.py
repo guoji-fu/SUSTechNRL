@@ -66,7 +66,7 @@ def parse_args():
                         type=float,
                         help='lambda is a hyperparameter in TADW')
     
-    ## parameters for deepwalk and note2vec
+    ## parameters for deepwalk and node2vec
     parser.add_argument('--walk-length',
                         default=80,
                         type=int,
@@ -85,10 +85,12 @@ def parse_args():
                         help='number of parallel processes')
     parser.add_argument('--p',
                         default=1.0,
-                        type=float)
+                        type=float,
+                        help='for node2vec, return paramter')
     parser.add_argument('--q',
                         default=1.0,
-                        type=float)
+                        type=float,
+                        help='for node2vec, in-out parameter: q>1 BFS-like; q<1 DFS-like')
 
     ## parameters for LINE
     parser.add_argument('--order',
@@ -159,7 +161,7 @@ def buildGraph(args):
         g.read_edgelist(filename=args.input,
                         weighted=args.weighted,
                         directed=args.directed)
-    
+
     return g
 
 def buildModel(args, g):
